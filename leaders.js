@@ -64,26 +64,102 @@
     summary:`${title}: ${role}, ${region}.`, wiki:`https://cs.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(wikiTitle)}`
   }));
 
+  const durationRules = [
+    {id:'duration-ww1',match:title => /prvni svetov.*valk/.test(title),title:'První světová válka',start:1914,end:1918,scope:'world',categories:['world-history','war'],importance:5,wikiTitle:'První světová válka',summary:'Celosvětový válečný konflikt v letech 1914–1918.'},
+    {id:'duration-spanish-flu',match:title => /spanelsk.*chrip/.test(title),title:'Pandemie španělské chřipky',start:1918,end:1920,scope:'world',categories:['world-history','science'],importance:4,wikiTitle:'Španělská chřipka',summary:'Celosvětová pandemie chřipky v letech 1918–1920.'},
+    {id:'duration-depression',match:title => /(svetov|velk).*hospodarsk.*kriz|globalni financni krize 1929/.test(title),title:'Velká hospodářská krize',start:1929,end:1939,scope:'world',categories:['world-history','politics'],importance:5,wikiTitle:'Velká hospodářská krize',summary:'Hluboká světová hospodářská krize začínající roku 1929.'},
+    {id:'duration-ww2',match:title => /druh.*svetov.*valk/.test(title),title:'Druhá světová válka',start:1939,end:1945,scope:'world',categories:['world-history','war'],importance:5,wikiTitle:'Druhá světová válka',summary:'Celosvětový válečný konflikt v letech 1939–1945.'},
+    {id:'duration-cold-war',match:title => /^studena valka$/.test(title),title:'Studená válka',start:1947,end:1991,scope:'world',categories:['world-history','war','politics'],importance:5,wikiTitle:'Studená válka',summary:'Globální politické a vojenské soupeření v letech 1947–1991.'},
+    {id:'duration-berlin-wall',match:title => /stavba berlinske zdi|^berlinska zed$/.test(title),title:'Berlínská zeď',start:1961,end:1989,scope:'world',categories:['world-history','politics'],importance:4,wikiTitle:'Berlínská zeď',summary:'Berlínská zeď oddělovala Západní Berlín od okolního území v letech 1961–1989.'},
+    {id:'duration-prague-spring',match:title => /prazske jaro a invaze/.test(title),title:'Pražské jaro',start:1968,end:1968.65,scope:'czech',categories:['czech-history','politics'],importance:5,wikiTitle:'Pražské jaro',summary:'Reformní proces v Československu v roce 1968.'},
+    {id:'duration-financial-crisis',match:title => /globalni financni krize|svetova financni krize 2008/.test(title),title:'Globální finanční krize',start:2007,end:2009,scope:'world',categories:['world-history','politics'],importance:4,wikiTitle:'Světová finanční krize 2008',summary:'Globální finanční a hospodářská krize v letech 2007–2009.'},
+    {id:'duration-covid',match:title => /^pandemie covidu 19$/.test(title),title:'Pandemie covidu-19',start:2020,end:2023,scope:'world',categories:['world-history','science'],importance:5,wikiTitle:'Pandemie covidu-19',summary:'Celosvětová pandemie covidu-19.'},
+    {id:'point-eu',match:title => /cesk.*republik.*vstup.*evrop|vstup cesk.*evrop/.test(title),title:'Vstup Česka do Evropské unie',start:2004,end:2004,scope:'czech',categories:['czech-history','politics'],importance:4,wikiTitle:'Vstup Česka do Evropské unie',summary:'Česká republika vstoupila do Evropské unie 1. května 2004.'}
+  ];
+
+  const applyDurationRules = () => {
+    const original = DATA.events.filter(event => !(event.categories || []).includes('ruler'));
+    const consumed = new Set();
+    const corrected = [];
+
+    durationRules.forEach(rule => {
+      const matches = original.filter(event => !consumed.has(event) && rule.match(normalize(event.title)));
+      if (!matches.length) return;
+      const base = matches.sort((a,b) => b.importance-a.importance || a.start-b.start)[0];
+      matches.forEach(event => consumed.add(event));
+      corrected.push({
+        ...base,
+        id:rule.id,
+        title:rule.title,
+        start:rule.start,
+        end:rule.end,
+        display:rule.start === rule.end ? String(Math.floor(rule.start)) : `${Math.floor(rule.start)}–${Math.floor(rule.end)}`,
+        scope:rule.scope,
+        categories:rule.categories,
+        importance:rule.importance,
+        wikiTitle:rule.wikiTitle,
+        wiki:`https://cs.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(rule.wikiTitle)}`,
+        summary:rule.summary
+      });
+    });
+
+    const seen = new Set();
+    original.forEach(event => {
+      if (consumed.has(event)) return;
+      const start = Number.isFinite(Number(event.start)) ? Number(event.start) : Number(event.year);
+      const end = Number.isFinite(Number(event.end)) ? Math.max(start,Number(event.end)) : start;
+      const key = `${normalize(event.title)}|${Math.round(start*100)/100}|${eventScope(event)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      corrected.push({...event,start,end,display:event.display || (end > start ? `${Math.floor(start)}–${Math.floor(end)}` : String(Math.floor(start))) });
+    });
+
+    DATA.events = corrected.concat(leaders);
+  };
+
   active.add('rulers');
-  DATA.events = DATA.events.filter(event => !(event.categories || []).includes('ruler'));
-  leaders.forEach(leader => DATA.events.push(leader));
+  applyDurationRules();
 
   const style = document.createElement('style');
   style.textContent = `
     .ruler-filter{margin-top:7px!important;padding-top:8px!important;border-top:1px solid var(--line)!important;border-radius:0!important}
-    .leader-card-live{position:absolute;z-index:30;height:31px;padding:3px 9px 3px 4px;border:1px solid color-mix(in srgb,var(--leader) 55%,var(--line));border-left:3px solid var(--leader);border-radius:999px;background:color-mix(in srgb,var(--leader) 10%,var(--panel));display:flex;align-items:center;gap:7px;color:var(--ink);box-shadow:0 4px 13px rgba(75,53,20,.08);overflow:hidden;transition:.14s ease}
+    .leader-card-live{position:absolute;z-index:30;height:34px;padding:3px 9px 3px 4px;border:1px solid color-mix(in srgb,var(--leader) 55%,var(--line));border-left:3px solid var(--leader);border-radius:999px;background:color-mix(in srgb,var(--leader) 10%,var(--panel));display:flex;align-items:center;gap:7px;color:var(--ink);box-shadow:0 4px 13px rgba(75,53,20,.08);overflow:hidden;transition:.14s ease}
     .leader-card-live:hover{z-index:70;transform:translateY(-1px);background:var(--panel);border-color:var(--leader);box-shadow:0 10px 24px color-mix(in srgb,var(--leader) 22%,transparent)}
     .leader-card-live.fallback{border-style:dashed;opacity:.82}
-    .leader-image{width:24px;height:24px;flex:0 0 24px;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--leader) 15%,var(--panel-soft))}
-    .leader-image img,.leader-pin-live img{width:100%;height:100%;display:block;object-fit:cover}
+    .leader-card-live.compact{padding-right:4px}
+    .leader-card-live.compact .leader-copy{display:none}
+    .leader-image{width:26px;height:26px;flex:0 0 26px;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--leader) 15%,var(--panel-soft))}
+    .leader-image img{width:100%;height:100%;display:block;object-fit:cover}
     .leader-copy{min-width:0;display:flex;flex-direction:column;line-height:1.02}
     .leader-copy b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;font-weight:770}
     .leader-copy small{margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7.4px;color:var(--muted)}
-    .leader-pin-live{position:absolute;z-index:24;transform:translate(-50%,-50%);width:25px;height:25px;border:2px solid var(--panel);border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--leader) 18%,var(--panel));box-shadow:0 0 0 1px var(--leader),0 4px 11px rgba(35,28,18,.16)}
-    .leader-pin-live.important{width:29px;height:29px;box-shadow:0 0 0 2px var(--leader),0 6px 15px rgba(35,28,18,.2)}
-    .leader-pin-live.fallback{border-radius:8px;opacity:.78}
+
+    .timeline-event-card{position:absolute;z-index:24;height:45px;border:2px solid var(--event);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--event) 18%,var(--panel));box-shadow:0 5px 15px rgba(26,31,47,.13);transition:transform .14s ease,box-shadow .14s ease;isolation:isolate}
+    .timeline-event-card:hover{z-index:75;transform:translateY(-2px);box-shadow:0 12px 28px rgba(21,26,42,.25)}
+    .timeline-event-card .timeline-event-media{position:absolute;inset:0;z-index:0;background:color-mix(in srgb,var(--event) 22%,var(--panel-soft))}
+    .timeline-event-card .timeline-event-media img{width:100%;height:100%;display:block;object-fit:cover;object-position:center}
+    .timeline-event-card::after{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(90deg,rgba(10,14,24,.82),rgba(10,14,24,.45) 62%,rgba(10,14,24,.12));pointer-events:none}
+    .timeline-event-card.duration::after{background:linear-gradient(90deg,rgba(10,14,24,.86),rgba(10,14,24,.46) 54%,rgba(10,14,24,.18))}
+    .timeline-event-card.war{--event:#e53935!important;border-color:#e53935!important;background:#b71c1c!important;box-shadow:0 5px 16px rgba(211,47,47,.25)}
+    .timeline-event-card.war::before{content:"";position:absolute;z-index:1;inset:0;background:rgba(183,28,28,.42);mix-blend-mode:multiply;pointer-events:none}
+    .timeline-event-copy{position:absolute;z-index:3;left:7px;right:6px;bottom:5px;display:flex;flex-direction:column;line-height:1.03;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);pointer-events:none}
+    .timeline-event-copy b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:800}
+    .timeline-event-copy time{margin-top:3px;font-size:7.5px;font-weight:750;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
+    .timeline-event-card.compact{height:38px;border-radius:9px}
+    .timeline-event-card.compact .timeline-event-copy b{font-size:7.7px}
+    .timeline-event-card.compact .timeline-event-copy time{font-size:6.8px}
+    .timeline-event-card.icon-only{width:38px!important}
+    .timeline-event-card.icon-only .timeline-event-copy{display:none}
+    .timeline-event-card.icon-only::after{background:linear-gradient(180deg,transparent,rgba(10,14,24,.22))}
+    .timeline-event-card.war.icon-only::before{background:rgba(183,28,28,.28)}
     html[data-theme="dark"] .leader-card-live{background:color-mix(in srgb,var(--leader) 14%,var(--panel))}
-    @media(max-width:1180px){.leader-copy small{display:none}.leader-card-live{height:29px}.leader-image{width:22px;height:22px;flex-basis:22px}}
+    @media(max-width:1180px){
+      .leader-copy small{display:none}
+      .leader-card-live{height:31px}
+      .leader-image{width:23px;height:23px;flex-basis:23px}
+      .timeline-event-card{height:41px}
+      .timeline-event-copy b{font-size:8.2px}
+    }
   `;
   document.head.appendChild(style);
 
@@ -112,9 +188,12 @@
     'teroristicke utoky 11 zari':'Teroristické útoky 11. září 2001',
     'predstaveni prvniho iphonu':'iPhone (1. generace)',
     'hana':'Hana (román)',
-    'alchymista':'Alchymista (román)'
+    'alchymista':'Alchymista (román)',
+    'berlinska zed':'Berlínská zeď',
+    'prvni svetova valka':'První světová válka',
+    'druha svetova valka':'Druhá světová válka'
   }));
-  const cacheKey = 'casovrstvy-smart-images-v2';
+  const cacheKey = 'casovrstvy-smart-images-v3';
   let disk = {};
   try { disk = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (_) { disk = {}; }
   const memory = new Map(Object.entries(disk));
@@ -138,9 +217,10 @@
 
   const fallbackImage = item => {
     const isLeader = (item.categories || []).includes('ruler');
-    const color = isLeader ? '#b8872f' : item.scope === 'tech' ? '#f39a18' : item.scope === 'czech' ? '#159ee5' : item.scope === 'world' ? '#ef4545' : '#6f54f6';
-    const glyph = isLeader ? '♛' : item.scope === 'tech' ? '✦' : item.scope === 'czech' ? '⌂' : item.scope === 'world' ? '◎' : '▤';
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><defs><linearGradient id="g"><stop stop-color="${color}"/><stop offset="1" stop-color="#252b3c"/></linearGradient></defs><rect width="120" height="120" rx="18" fill="url(#g)"/><text x="60" y="74" text-anchor="middle" font-size="48" fill="white">${glyph}</text></svg>`;
+    const isWar = (item.categories || []).includes('war');
+    const color = isLeader ? '#b8872f' : isWar ? '#d32f2f' : item.scope === 'tech' ? '#f39a18' : item.scope === 'czech' ? '#159ee5' : item.scope === 'world' ? '#ef4545' : '#6f54f6';
+    const glyph = isLeader ? '♛' : isWar ? '⚔' : item.scope === 'tech' ? '✦' : item.scope === 'czech' ? '⌂' : item.scope === 'world' ? '◎' : '▤';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g"><stop stop-color="${color}"/><stop offset="1" stop-color="#252b3c"/></linearGradient></defs><rect width="160" height="100" rx="14" fill="url(#g)"/><text x="80" y="65" text-anchor="middle" font-size="42" fill="white">${glyph}</text></svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   };
 
@@ -176,8 +256,16 @@
     host.classList.add('image-loading');
     resolveImage(item).then(source => {
       if (!host.isConnected || host.dataset.smartKey !== key) return;
-      const image = new Image(); image.alt = alt; image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
-      image.onload = () => { if (host.isConnected) { host.replaceChildren(image); host.classList.remove('image-loading'); host.classList.add('image-loaded'); } };
+      const image = new Image();
+      image.alt = alt;
+      image.decoding = 'async';
+      image.referrerPolicy = 'no-referrer';
+      image.onload = () => {
+        if (!host.isConnected) return;
+        host.replaceChildren(image);
+        host.classList.remove('image-loading');
+        host.classList.add('image-loaded');
+      };
       image.src = source;
     });
   };
@@ -190,105 +278,183 @@
     if (card.dataset.kind === 'event') return DATA.events.find(item => item.id === card.dataset.id);
     return null;
   };
-  const hydrate = () => document.querySelectorAll('.author-card-live .avatar,.work-card-live .work-thumb,.event-card-live .event-image,.event-pin-live,.leader-image,.leader-pin-live').forEach(host => { const item = findItem(host); if (item) smartImage(item,host,item.title || item.name || ''); });
 
-  const overlaps = (a,b,gap=6) => !(a.right+gap <= b.left || b.right+gap <= a.left);
-  const addLabel = (host,top,text,icon,color) => { const label = document.createElement('div'); label.className = 'lane-label'; label.style.cssText = `top:${top}px;--lane:${color}`; label.innerHTML = icon + `<span>${text}</span>`; host.appendChild(label); };
+  const hydrate = () => document.querySelectorAll('.author-card-live .avatar,.work-card-live .work-thumb,.timeline-event-media,.leader-image').forEach(host => {
+    const item = findItem(host);
+    if (item) smartImage(item,host,item.title || item.name || '');
+  });
+
+  const overlaps = (a,b,gap=5) => !(a.right+gap <= b.left || b.right+gap <= a.left);
+  const addLabel = (host,top,text,icon,color) => {
+    const label = document.createElement('div');
+    label.className = 'lane-label';
+    label.style.cssText = `top:${top}px;--lane:${color}`;
+    label.innerHTML = icon + `<span>${text}</span>`;
+    host.appendChild(label);
+  };
+
   const visibleEvent = event => {
     if ((event.categories || []).includes('ruler')) return false;
     if (event.end < viewStart || event.start > viewEnd || !active.has('events')) return false;
     if (searchTerm && !`${event.title} ${event.display || ''} ${event.summary || ''}`.toLowerCase().includes(searchTerm)) return false;
-    const scope = eventScope(event), categories = event.categories || [];
+    const scope = eventScope(event);
+    const categories = event.categories || [];
     if (scope === 'czech') return active.has('czech');
     if (scope === 'tech') return active.has('tech');
     if (categories.includes('war')) return active.has('wars') || active.has('world');
     return active.has('world') || active.has('politics') || active.has('culture');
   };
 
-  renderHistory = function renderHistoryWithLeaders(width) {
-    const host = document.getElementById('eventLayer'); host.innerHTML = '';
+  const isWarEvent = event => {
+    const title = normalize(event.title);
+    return (event.categories || []).includes('war') || /(valka|invaze|bitva|okupace|utok|atentat|povstani)/.test(title);
+  };
+
+  const chooseRow = (rows,interval) => {
+    const free = rows.findIndex(items => items.every(other => !overlaps(interval,other,4)));
+    if (free >= 0) return free;
+    let best = 0;
+    let bestScore = Infinity;
+    rows.forEach((items,index) => {
+      const score = items.reduce((total,other) => total + Math.max(0,Math.min(interval.right,other.right)-Math.max(interval.left,other.left)),0);
+      if (score < bestScore) { bestScore = score; best = index; }
+    });
+    return best;
+  };
+
+  const makeEventCard = (event,config,width,currentSpan) => {
+    const duration = Math.max(0,event.end-event.start);
+    const startX = xFor(Math.max(event.start,viewStart),width);
+    const endX = xFor(Math.min(event.end,viewEnd),width);
+    const pointX = xFor((event.start+event.end)/2,width);
+    const isDuration = duration > 0.2;
+    const exactWidth = Math.max(0,endX-startX);
+    const showText = currentSpan <= 360 || event.importance >= 5 || (isDuration && exactWidth >= 70);
+    let cardWidth;
+    let left;
+    if (isDuration) {
+      cardWidth = Math.max(showText ? 74 : 42,exactWidth);
+      left = exactWidth < cardWidth ? pointX-cardWidth/2 : startX;
+    } else {
+      cardWidth = showText ? Math.min(164,Math.max(82,70+event.title.length*3.4)) : 38;
+      left = pointX-cardWidth/2;
+    }
+    left = clamp(left,112,width-cardWidth-14);
+    const war = isWarEvent(event);
+    const color = war ? '#e53935' : config.color;
+    const card = document.createElement('a');
+    card.className = `timeline-event-card${isDuration ? ' duration' : ' point'}${showText ? '' : ' icon-only compact'}${war ? ' war' : ''}`;
+    card.href = event.wiki;
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+    card.dataset.kind = 'event';
+    card.dataset.id = event.id;
+    card.style.cssText = `left:${left}px;width:${cardWidth}px;--event:${color}`;
+    card.innerHTML = '<span class="timeline-event-media"></span><span class="timeline-event-copy"><b></b><time></time></span>';
+    card.querySelector('b').textContent = event.title;
+    card.querySelector('time').textContent = event.display || (isDuration ? `${Math.floor(event.start)}–${Math.floor(event.end)}` : String(Math.floor(event.start)));
+    smartImage(event,card.querySelector('.timeline-event-media'),event.title);
+    card.onmouseenter = mouseEvent => showTip(mouseEvent,event,event.display,event.summary);
+    card.onmousemove = moveTip;
+    card.onmouseleave = hideTip;
+    return {card,left,right:left+cardWidth,isDuration,duration};
+  };
+
+  renderHistory = function renderHistoryChronologically(width) {
+    const host = document.getElementById('eventLayer');
+    host.innerHTML = '';
     const height = host.clientHeight;
-    const events = DATA.events.filter(visibleEvent).sort((a,b) => a.start-b.start || b.importance-a.importance);
+    const events = DATA.events.filter(visibleEvent).sort((a,b) => a.start-b.start || (b.end-b.start)-(a.end-a.start) || b.importance-a.importance);
     document.getElementById('empty').style.display = events.length || active.has('rulers') ? 'none' : 'grid';
+
     const laneCount = active.has('rulers') ? 4 : 3;
     const laneHeight = height / laneCount;
     const configs = {};
-    let index = 0;
-    if (active.has('rulers')) configs.ruler = {top:laneHeight*index++,height:laneHeight,color:'#b8872f',label:'Vládci a prezidenti',icon:laneIcons.ruler};
-    configs.czech = {top:laneHeight*index++,height:laneHeight,color:'#159ee5',label:'České dějiny',icon:laneIcons.czech};
-    configs.world = {top:laneHeight*index++,height:laneHeight,color:'#ef4545',label:'Svět & války',icon:laneIcons.world};
-    configs.tech = {top:laneHeight*index,height:laneHeight,color:'#f39a18',label:'Vynálezy',icon:laneIcons.tech};
+    let laneIndex = 0;
+    if (active.has('rulers')) configs.ruler = {top:laneHeight*laneIndex++,height:laneHeight,color:'#b8872f',label:'Vládci a prezidenti',icon:laneIcons.ruler};
+    configs.czech = {top:laneHeight*laneIndex++,height:laneHeight,color:'#159ee5',label:'České dějiny',icon:laneIcons.czech};
+    configs.world = {top:laneHeight*laneIndex++,height:laneHeight,color:'#ef4545',label:'Svět & války',icon:laneIcons.world};
+    configs.tech = {top:laneHeight*laneIndex,height:laneHeight,color:'#f39a18',label:'Vynálezy',icon:laneIcons.tech};
 
     Object.values(configs).forEach(config => {
-      config.axis = config.top + config.height/2;
-      const lane = document.createElement('div'); lane.className = 'history-lane'; lane.style.cssText = `top:${config.top}px;height:${config.height}px;--lane:${config.color}`;
-      const axis = document.createElement('i'); axis.className = 'history-axis'; axis.style.top = `${config.axis-config.top}px`; lane.appendChild(axis); host.appendChild(lane);
+      const lane = document.createElement('div');
+      lane.className = 'history-lane';
+      lane.style.cssText = `top:${config.top}px;height:${config.height}px;--lane:${config.color}`;
+      const axis = document.createElement('i');
+      axis.className = 'history-axis';
+      axis.style.top = `${config.height-1}px`;
+      lane.appendChild(axis);
+      host.appendChild(lane);
       addLabel(host,config.top+4,config.label,config.icon,config.color);
     });
 
     if (configs.ruler) {
       const config = configs.ruler;
-      const scoped = leaders.filter(leader => leader.end >= viewStart && leader.start <= viewEnd);
-      const pinOffsets = [0,-20,20,-39,39];
-      const pinEnds = pinOffsets.map(() => -Infinity);
+      const scoped = leaders.filter(leader => leader.end >= viewStart && leader.start <= viewEnd).sort((a,b) => a.start-b.start || b.importance-a.importance);
+      const rowCount = Math.max(1,Math.floor((config.height-30)/37));
+      const rows = Array.from({length:rowCount},() => []);
       scoped.forEach(leader => {
-        const point = xFor((Math.max(leader.start,viewStart)+Math.min(leader.end,viewEnd))/2,width);
-        const size = leader.importance >= 5 ? 29 : 25;
-        let row = pinEnds.findIndex(end => point-end >= size+4); if (row < 0) row = pinEnds.indexOf(Math.min(...pinEnds)); pinEnds[row] = point;
-        const pin = document.createElement('a');
-        pin.className = `leader-pin-live${leader.importance >= 5 ? ' important' : ''}${leader.fallback ? ' fallback' : ''}`;
-        pin.href = leader.wiki; pin.target = '_blank'; pin.rel = 'noopener noreferrer'; pin.dataset.kind = 'event'; pin.dataset.id = leader.id;
-        pin.style.cssText = `left:${point}px;top:${config.axis+pinOffsets[row]}px;--leader:${leader.fallback ? '#7f8ca5' : '#b8872f'}`;
-        smartImage(leader,pin,leader.title); pin.onmouseenter = event => showTip(event,leader,leader.display,`${leader.role} · ${leader.region}`); pin.onmousemove = moveTip; pin.onmouseleave = hideTip;
-        host.appendChild(pin);
-      });
+        const startX = xFor(Math.max(leader.start,viewStart),width);
+        const endX = xFor(Math.min(leader.end,viewEnd),width);
+        const exactWidth = Math.max(0,endX-startX);
+        const point = (startX+endX)/2;
+        const currentSpan = span();
+        const showText = currentSpan <= 380 || leader.importance >= 5 || exactWidth >= 110;
+        const cardWidth = Math.max(showText ? 104 : 34,exactWidth);
+        const left = clamp(exactWidth < cardWidth ? point-cardWidth/2 : startX,112,width-cardWidth-14);
+        const interval = {left,right:left+cardWidth};
+        const row = chooseRow(rows,interval);
+        rows[row].push(interval);
+        const top = config.top+29+row*37;
+        if (top+34 > config.top+config.height-2) return;
 
-      const currentSpan = span();
-      const threshold = currentSpan > 500 ? 5 : currentSpan > 300 ? 4 : currentSpan > 150 ? 3 : 1;
-      const cards = scoped.filter(leader => leader.importance >= threshold).sort((a,b) => a.start-b.start || b.importance-a.importance);
-      const tops = [config.top+29,config.top+62];
-      const occupied = [[],[]];
-      cards.forEach(leader => {
-        const startX = xFor(Math.max(leader.start,viewStart),width), endX = xFor(Math.min(leader.end,viewEnd),width);
-        const cardWidth = Math.min(245,Math.max(122,endX-startX,76+leader.title.length*5.2));
-        const left = clamp(startX,112,width-cardWidth-16), interval = {left,right:left+cardWidth};
-        const row = occupied.findIndex(items => items.every(other => !overlaps(interval,other,5))); if (row < 0) return;
-        const top = tops[row]; if (top+31 > config.top+config.height-2) return; occupied[row].push(interval);
         const card = document.createElement('a');
-        card.className = `leader-card-live${leader.fallback ? ' fallback' : ''}`; card.href = leader.wiki; card.target = '_blank'; card.rel = 'noopener noreferrer'; card.dataset.kind = 'event'; card.dataset.id = leader.id;
+        card.className = `leader-card-live${leader.fallback ? ' fallback' : ''}${showText ? '' : ' compact'}`;
+        card.href = leader.wiki;
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
+        card.dataset.kind = 'event';
+        card.dataset.id = leader.id;
         card.style.cssText = `left:${left}px;top:${top}px;width:${cardWidth}px;--leader:${leader.fallback ? '#7f8ca5' : '#b8872f'}`;
         card.innerHTML = `<span class="leader-image"></span><span class="leader-copy"><b>${leader.title}</b><small>${leader.display} · ${leader.region}</small></span>`;
-        smartImage(leader,card.querySelector('.leader-image'),leader.title); card.onmouseenter = event => showTip(event,leader,leader.display,`${leader.role} · ${leader.region}`); card.onmousemove = moveTip; card.onmouseleave = hideTip;
+        smartImage(leader,card.querySelector('.leader-image'),leader.title);
+        card.onmouseenter = mouseEvent => showTip(mouseEvent,leader,leader.display,`${leader.role} · ${leader.region}`);
+        card.onmousemove = moveTip;
+        card.onmouseleave = hideTip;
         host.appendChild(card);
       });
     }
 
     ['czech','world','tech'].forEach(scope => {
-      const config = configs[scope], scoped = events.filter(event => eventScope(event) === scope);
-      const offsets = [0,-20,20,-38,38], ends = offsets.map(() => -Infinity);
-      scoped.forEach(event => {
-        const point = xFor((event.start+event.end)/2,width), size = event.importance >= 5 ? 29 : 23;
-        let row = ends.findIndex(end => point-end >= size+4); if (row < 0) row = ends.indexOf(Math.min(...ends)); ends[row] = point;
-        const pin = document.createElement('a'); pin.className = `event-pin-live${event.importance >= 5 ? ' major' : ''}`; pin.href = event.wiki; pin.target = '_blank'; pin.rel = 'noopener noreferrer'; pin.dataset.kind = 'event'; pin.dataset.id = event.id;
-        pin.style.cssText = `left:${point}px;top:${config.axis+offsets[row]}px;--event:${config.color}`; smartImage(event,pin,event.title); pin.onmouseenter = mouseEvent => showTip(mouseEvent,event,event.display,event.summary); pin.onmousemove = moveTip; pin.onmouseleave = hideTip; host.appendChild(pin);
-      });
-      const currentSpan = span(), threshold = currentSpan > 500 ? 5 : currentSpan > 300 ? 4 : currentSpan > 150 ? 3 : 1;
-      const cards = scoped.filter(event => event.importance >= threshold).sort((a,b) => a.start-b.start);
-      const tops = [config.top+3,config.axis+23], occupied = [[],[]];
-      cards.forEach(event => {
-        const point = xFor((event.start+event.end)/2,width), overview = currentSpan > 500;
-        const cardWidth = Math.min(overview ? 170 : 225,Math.max(overview ? 116 : 126,76+event.title.length*(overview ? 3.8 : 4.5)));
-        const left = clamp(point-cardWidth/2,112,width-cardWidth-16), interval = {left,right:left+cardWidth};
-        const row = occupied.findIndex(items => items.every(other => !overlaps(interval,other,overview ? 4 : 7))); if (row < 0) return;
-        const top = tops[row]; if (top+38 > config.top+config.height-2) return; occupied[row].push(interval);
-        const card = document.createElement('a'); card.className = 'event-card-live'; card.href = event.wiki; card.target = '_blank'; card.rel = 'noopener noreferrer'; card.dataset.kind = 'event'; card.dataset.id = event.id;
-        card.style.cssText = `left:${left}px;top:${top}px;width:${cardWidth}px;--event:${config.color}`; card.innerHTML = '<span class="event-image"></span><span class="event-text"><b></b><time></time></span>';
-        card.querySelector('b').textContent = event.title; card.querySelector('time').textContent = event.display; smartImage(event,card.querySelector('.event-image'),event.title); card.onmouseenter = mouseEvent => showTip(mouseEvent,event,event.display,event.summary); card.onmousemove = moveTip; card.onmouseleave = hideTip; host.appendChild(card);
+      const config = configs[scope];
+      const currentSpan = span();
+      const scoped = events.filter(event => eventScope(event) === scope);
+      const rowCount = Math.max(1,Math.floor((config.height-29)/48));
+      const rows = Array.from({length:rowCount},() => []);
+      const prepared = scoped.map(event => ({event,...makeEventCard(event,config,width,currentSpan)}))
+        .sort((a,b) => Number(b.isDuration)-Number(a.isDuration) || b.duration-a.duration || b.event.importance-a.event.importance || a.event.start-b.event.start);
+
+      prepared.forEach(item => {
+        const interval = {left:item.left,right:item.right};
+        const row = chooseRow(rows,interval);
+        rows[row].push(interval);
+        const top = config.top+29+row*48;
+        if (top+45 > config.top+config.height-2) return;
+        item.card.style.top = `${top}px`;
+        host.appendChild(item.card);
       });
     });
   };
 
   const previousRender = render;
-  render = function renderWithCompleteLeaders() { previousRender(); requestAnimationFrame(hydrate); setTimeout(hydrate,700); };
-  requestAnimationFrame(() => { render(); hydrate(); });
+  render = function renderWithChronologicalBlocks() {
+    previousRender();
+    requestAnimationFrame(hydrate);
+    setTimeout(hydrate,650);
+  };
+
+  requestAnimationFrame(() => {
+    render();
+    hydrate();
+  });
 })();
