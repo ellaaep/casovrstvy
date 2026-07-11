@@ -1,79 +1,9 @@
-<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Časovrstvy</title><style>html,body{margin:0;height:100%;background:#ead8b5;color:#4a3828;font-family:system-ui,sans-serif}.loading{height:100%;display:grid;place-items:center}.loading b{font-family:Georgia,serif;font-size:24px}</style></head><body><div class="loading"><b>Načítám Časovrstvy…</b></div><!-- build:v24-period-thumbs --><script>
-fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/4d31d5e23383d48110cc40f5d5c80fd0b72e76ba/index.html?v=24',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Načtení aplikace selhalo');return r.text()}).then(source=>{
- const eraPatch=`
-<style id="v24-period-thumbs">
-/* Period cards: thumbnail stays in its own fixed slot and never covers the title. */
-.period-label{
-  position:absolute!important;
-  display:block!important;
-  height:52px!important;
-  min-height:52px!important;
-  padding:6px 28px 6px 54px!important;
-  overflow:hidden!important;
-  text-align:left!important;
-}
-.period-thumb{
-  position:absolute!important;
-  left:10px!important;
-  top:50%!important;
-  transform:translateY(-50%)!important;
-  width:34px!important;
-  height:34px!important;
-  min-width:34px!important;
-  min-height:34px!important;
-  margin:0!important;
-  padding:0!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:9px!important;
-  overflow:hidden!important;
-  z-index:2!important;
-  background:color-mix(in srgb,var(--period) 10%,var(--panel2))!important;
-  border:1px solid color-mix(in srgb,var(--period) 42%,var(--line))!important;
-  box-shadow:none!important;
-  flex:none!important;
-}
-.period-thumb img{
-  width:100%!important;
-  height:100%!important;
-  max-width:100%!important;
-  max-height:100%!important;
-  object-fit:contain!important;
-  object-position:center!important;
-  padding:3px!important;
-  box-sizing:border-box!important;
-  border-radius:7px!important;
-  background:color-mix(in srgb,var(--surface) 90%,var(--period) 10%)!important;
-  filter:none!important;
-  mix-blend-mode:normal!important;
-}
-.period-thumb span{font-size:13px!important;line-height:1!important;font-weight:900!important;color:var(--period)!important}
-.period-label b{
-  display:-webkit-box!important;
-  -webkit-box-orient:vertical!important;
-  -webkit-line-clamp:2!important;
-  white-space:normal!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  line-height:1.08!important;
-  margin:0!important;
-  padding:0!important;
-  max-width:100%!important;
-}
-.period-label time{display:block!important;margin-top:3px!important;line-height:1!important}
-.period-label em{position:absolute!important;right:27px!important;bottom:7px!important;margin:0!important}
-.period-label .period-dot{right:9px!important;bottom:8px!important}
-html[data-theme="dark"] .period-thumb{background:#2d2017!important;border-color:color-mix(in srgb,var(--period) 55%,#5f4632)!important}
-html[data-theme="dark"] .period-thumb img{background:#3a291d!important}
-@media(max-width:820px){
- .period-label{height:50px!important;min-height:50px!important;padding-left:49px!important}
- .period-thumb{left:9px!important;width:31px!important;height:31px!important;min-width:31px!important;min-height:31px!important}
-}
-</style>
-`;
+<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Časovrstvy</title><style>html,body{margin:0;height:100%;background:#f7f8fc;color:#171a23;font-family:system-ui,sans-serif}.loading{height:100%;display:grid;place-items:center}.loading b{font-size:20px}</style></head><body><div class="loading"><b>Načítám Časovrstvy…</b></div><!-- build:v25-clean-timeline --><script>
+fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/4d31d5e23383d48110cc40f5d5c80fd0b72e76ba/index.html?v=25',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Načtení aplikace selhalo');return r.text()}).then(source=>{
  const needle="const output=base.replace('</body>',oldPatch+freshPatch+'</body>');";
- if(!source.includes(needle))throw new Error('Místo pro opravu období nebylo nalezeno');
- source=source.replace(needle,"const eraPatch="+JSON.stringify(eraPatch)+";const output=base.replace('</body>',oldPatch+freshPatch+eraPatch+'</body>');");
+ const assets='<link rel="stylesheet" href="design-v25.css?v=25"><script src="design-v25.js?v=25"><\\/script>';
+ if(!source.includes(needle))throw new Error('Místo pro vložení nového designu nebylo nalezeno');
+ source=source.replace(needle,"const designAssets="+JSON.stringify(assets)+";const output=base.replace('</body>',oldPatch+freshPatch+designAssets+'</body>');");
  document.open();document.write(source);document.close();
 }).catch(error=>{document.body.innerHTML='<div class="loading"><b>Aplikaci se nepodařilo načíst.</b></div>';console.error(error)});
 </script></body></html>
