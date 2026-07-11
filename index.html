@@ -1,7 +1,7 @@
 <!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Časovrstvy</title><style>html,body{margin:0;height:100%;background:#f7f8fc;color:#171a23;font-family:system-ui,sans-serif}.loading{height:100%;display:grid;place-items:center}.loading b{font-size:20px}</style></head><body><div class="loading"><b>Načítám Časovrstvy…</b></div><!-- build:v25-clean-timeline --><script>
-fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/4d31d5e23383d48110cc40f5d5c80fd0b72e76ba/index.html?v=25',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Načtení aplikace selhalo');return r.text()}).then(source=>{
+fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/4d31d5e23383d48110cc40f5d5c80fd0b72e76ba/index.html?v=25b',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Načtení aplikace selhalo');return r.text()}).then(source=>{
  const needle="const output=base.replace('</body>',oldPatch+freshPatch+'</body>');";
- const assets='<link rel="stylesheet" href="design-v25.css?v=25"><script src="design-v25.js?v=25"><\\/script>';
+ const assets='<link rel="stylesheet" href="design-v25.css?v=25b"><script src="design-v25.js?v=25b"></scr'+'ipt>';
  if(!source.includes(needle))throw new Error('Místo pro vložení nového designu nebylo nalezeno');
  source=source.replace(needle,"const designAssets="+JSON.stringify(assets)+";const output=base.replace('</body>',oldPatch+freshPatch+designAssets+'</body>');");
  document.open();document.write(source);document.close();
