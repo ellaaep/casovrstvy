@@ -1,10 +1,10 @@
-<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Časovrstvy</title><style>html,body{margin:0;height:100%;background:#f7f8fc;color:#171a23;font-family:system-ui,sans-serif}.loading{height:100%;display:grid;place-items:center}.loading b{font-size:20px}</style></head><body><div class="loading"><b>Načítám Časovrstvy…</b></div><!-- build:v27-ui-fixes --><script>
-fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/eacb4831721371cdbe7fbd5aecdcddf70e60dc0b/index.html?v=27',{cache:'no-store'})
+<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Časovrstvy</title><style>html,body{margin:0;height:100%;background:#f7f8fc;color:#171a23;font-family:system-ui,sans-serif}.loading{height:100%;display:grid;place-items:center}.loading b{font-size:20px}</style></head><body><div class="loading"><b>Načítám Časovrstvy…</b></div><!-- build:v28-complete-timeline --><script>
+fetch('https://raw.githubusercontent.com/ellaaep/casovrstvy/eacb4831721371cdbe7fbd5aecdcddf70e60dc0b/index.html?v=28',{cache:'no-store'})
 .then(r=>{if(!r.ok)throw new Error('Načtení aplikace selhalo');return r.text()})
 .then(source=>{
-  const css='<link rel="stylesheet" href="design-v25.css?v=27"><link rel="stylesheet" href="fix-v27.css?v=27">';
+  const css='<link rel="stylesheet" href="design-v25.css?v=28"><link rel="stylesheet" href="fix-v27.css?v=28"><link rel="stylesheet" href="fix-v28.css?v=28">';
   const closing='</scr'+'ipt>';
-  const js='<script src="design-v25.js?v=27">'+closing+'<script src="fix-v27.js?v=27">'+closing;
+  const js='<script src="design-v25.js?v=28">'+closing+'<script src="fix-v27.js?v=28">'+closing+'<script src="fix-v28.js?v=28">'+closing;
   source=source.replace('</head>',css+'</head>');
   source=source.replace('</body>',js+'</body>');
   document.open();
